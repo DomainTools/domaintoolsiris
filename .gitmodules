@@ -1,0 +1,3 @@
+[submodule "splunk-soar-dev"]
+	path = splunk-soar-dev
+	url = git@gitlab.com:domaintools/application/integrations/splunk-soar-dev.git
