@@ -7,14 +7,15 @@
 
 import codecs
 import json
-import phantom.app as phantom
 import re
-import requests
+# Imports local to this App
 import sys
-import tldextract
-
 from datetime import datetime, timedelta
 
+# Splunk SOAR App imports
+import phantom.app as phantom
+import requests
+import tldextract
 from domaintools import API
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
