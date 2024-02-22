@@ -32,6 +32,12 @@ class DomainToolsConnector(BaseConnector):
     ACTION_ID_LOAD_HASH = "load_hash"
     ACTION_ID_ON_POLL = "on_poll"
     ACTION_ID_CONFIGURE_SCHEDULED_PLAYBOOK = "configure_monitoring_scheduled_playbooks"
+    ACTION_ID_WHOIS_HISTORY = "whois_history"
+    ACTION_ID_REVERSE_WHOIS = "reverse_whois"
+    ACTION_ID_PARSED_WHOIS_DOMAIN = "parsed_whois_domain"
+    ACTION_ID_PARSED_WHOIS_IP = "parsed_whois_ip"
+    ACTION_ID_RECENT_DOMAINS = "brand_monitor"
+    ACTION_ID_HOSTING_HISTORY = "hosting_history"
 
     def __init__(self):
         # Call the BaseConnectors init first
@@ -219,7 +225,6 @@ class DomainToolsConnector(BaseConnector):
                     response = service_api(domains, **query_args, position=position)
                 else:
                     response = service_api(**query_args, position=position)
-
                 try:
                     response_json = response.data()
                 except Exception as e:
@@ -233,7 +238,19 @@ class DomainToolsConnector(BaseConnector):
                     response = response_json.get("response", {})
                     has_more_results = response.get("has_more_results")
                     position = response.get("position")
-                    results_data += response.get("results")
+
+                    if service in ("iris_enrich", "iris_investigate"):
+                        results_data += response.get("results")
+                    elif service == "whois_history":
+                        results_data += response.get("history")
+                    elif service == "reverse_whois":
+                        results_data += response.get("domains") or []
+                    elif service == "parsed_whois":
+                        results_data += [response.get("registrant")]
+                    elif service == "brand_monitor":
+                        results_data += response.get("alerts") or []
+                    elif service == "hosting_history":
+                        results_data += response.get("registrar_history") or []
 
         except Exception as e:
             return action_result.set_status(
@@ -243,9 +260,13 @@ class DomainToolsConnector(BaseConnector):
             )
 
         self.save_progress(f"Parsing {len(results_data)} results...")
-        response_json["response"]["results"] = self._convert_risk_scores_to_string(
-            results_data
-        )
+
+        # Convert risk scores to string to sort,
+        # only applicable for action that uses iris_enrich or iris_investigate
+        if service in ("iris_enrich", "iris_investigate"):
+            response_json["response"]["results"] = self._convert_risk_scores_to_string(
+                results_data
+            )
 
         try:
             return self._parse_response(action_result, response_json)
@@ -274,9 +295,11 @@ class DomainToolsConnector(BaseConnector):
         # Make the final result sorted in descending order by default
         return sorted(
             final_result,
-            key=lambda d: 0
-            if d.get("domain_risk", {}).get("risk_score_string") == ""
-            else d.get("domain_risk", {}).get("risk_score"),
+            key=lambda d: (
+                0
+                if d.get("domain_risk", {}).get("risk_score_string") == ""
+                else d.get("domain_risk", {}).get("risk_score")
+            ),
             reverse=True,
         )
 
@@ -354,6 +377,18 @@ class DomainToolsConnector(BaseConnector):
             ret_val = self._on_poll(param)
         elif action_id == self.ACTION_ID_CONFIGURE_SCHEDULED_PLAYBOOK:
             ret_val = self._configure_monitoring_scheduled_playbooks(param)
+        elif action_id == self.ACTION_ID_WHOIS_HISTORY:
+            ret_val = self._whois_history(param)
+        elif action_id == self.ACTION_ID_REVERSE_WHOIS:
+            ret_val == self._reverse_whois(param)
+        elif action_id == self.ACTION_ID_PARSED_WHOIS_DOMAIN:
+            ret_val == self._parsed_whois(param, whois_type="domain")
+        elif action_id == self.ACTION_ID_PARSED_WHOIS_IP:
+            ret_val == self._parsed_whois(param, whois_type="ip")
+        elif action_id == self.ACTION_ID_RECENT_DOMAINS:
+            ret_val == self._brand_monitor(param)
+        elif action_id == self.ACTION_ID_HOSTING_HISTORY:
+            ret_val == self._hosting_history(param)
 
         return ret_val
 
@@ -882,6 +917,123 @@ class DomainToolsConnector(BaseConnector):
             phantom.APP_ERROR,
             f"`{self._scheduled_playbooks_list_name}` custom list {res.get('message')}",
         )
+
+    def _whois_history(self, param):
+        self.debug_print("_whois_history called.")
+        action_result = self.add_action_result(ActionResult(param))
+
+        params = {"query": param.get("domain")}
+        ret_val = self._do_query("whois_history", action_result, query_args=params)
+        if not ret_val:
+            return action_result.get_data()
+
+        data = action_result.get_data()
+        if not data:
+            return action_result.get_status()
+
+        action_result.update_summary({"record_count": data[0]["record_count"]})
+
+        return action_result.get_status()
+
+    def _reverse_whois(self, param):
+        self.debug_print("_reverse_whois called.")
+        action_result = self.add_action_result(ActionResult(param))
+        params = {
+            "query": param["terms"],
+            "mode": "quote" if param["count_only"] else "purchase",
+            "scope": "historic" if param["include_history"] else "current",
+        }
+
+        if excluded_domains := param.get("exclude_domains") or None:
+            params["exclude"] = excluded_domains
+
+        ret_val = self._do_query("reverse_whois", action_result, query_args=params)
+        if not ret_val:
+            return action_result.get_data()
+
+        data = action_result.get_data()
+        if not data:
+            return action_result.get_status()
+
+        action_result.update_summary(
+            {"total_domains": len(data[0].get("domains") or [])}
+        )
+
+        return action_result.get_status()
+
+    def _parsed_whois(self, param, whois_type):
+        self.debug_print("_parsed_whois called.")
+        action_result = self.add_action_result(ActionResult(param))
+
+        params = {"query": param[whois_type]}
+
+        ret_val = self._do_query("parsed_whois", action_result, query_args=params)
+        if not ret_val:
+            return action_result.get_data()
+
+        data = action_result.get_data()
+        if not data:
+            return action_result.get_status()
+
+        response = data[0]
+        if response and "registrant" in response:
+            # get the registrant
+            summary = {"organization": response["registrant"]}
+            if "parsed_whois" in response:
+                contacts = response["parsed_whois"].get("contacts", {})
+                if type(contacts) == list:
+                    registrant = contacts[0]
+                else:
+                    registrant = contacts.get("registrant")
+                summary["city"] = registrant.get("city")
+                summary["country"] = registrant.get("country")
+                action_result.update_summary(summary)
+
+        return action_result.get_status()
+
+    def _brand_monitor(self, param):
+        self.debug_print("_brand_monitor called.")
+        action_result = self.add_action_result(ActionResult(dict(param)))
+
+        params = {"query": param.get("query"), "days_back": param.get("days_back")}
+        if "status" in param:
+            params["domain_status"] = param["status"]
+
+        ret_val = self._do_query("brand_monitor", action_result, query_args=params)
+        if not ret_val:
+            return action_result.get_data()
+
+        data = action_result.get_data()
+        if not data:
+            return action_result.get_status()
+
+        action_result.update_summary({"total_domains": len(data[0]["alerts"])})
+
+        return action_result.get_status()
+
+    def _hosting_history(self, param):
+        self.debug_print("_hosting_history called.")
+        action_result = self.add_action_result(ActionResult(dict(param)))
+
+        params = {"query": param["domain"]}
+
+        ret_val = self._do_query("hosting_history", action_result, query_args=params)
+        if not ret_val:
+            return action_result.get_data()
+
+        data = action_result.get_data()
+        if not data:
+            return action_result.get_status()
+
+        action_result.update_summary(
+            {"registrar_history_count": len(data[0]["registrar_history"])}
+        )
+        action_result.update_summary({"ip_history_count": len(data[0]["ip_history"])})
+        action_result.update_summary(
+            {"nameserver_history_count": len(data[0]["nameserver_history"])}
+        )
+
+        return action_result.get_status()
 
 
 if __name__ == "__main__":
