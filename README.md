@@ -2,7 +2,7 @@
 # DomainTools Iris Investigate
 
 Publisher: DomainTools  
-Connector Version: 1.5.1  
+Connector Version: 1.5.2  
 Product Vendor: DomainTools  
 Product Name: DomainTools Iris Investigate  
 Product Version Supported (regex): ".\*"  
@@ -96,6 +96,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 ### Supported Actions  
 [test connectivity](#action-test-connectivity) - Validate the asset configuration for connectivity  
 [domain reputation](#action-domain-reputation) - Evaluates the risk of a given domain  
+[nod feed](#action-nod-feed) - Lists newly observed domains from feed  
 [pivot action](#action-pivot-action) - Find domains connected by any supported Iris Investigate search parameter  
 [reverse domain](#action-reverse-domain) - Extract IPs from a single domain response for further pivoting  
 [reverse ip](#action-reverse-ip) - Find domains with web hosting IP, NS IP or MX IP  
@@ -145,6 +146,23 @@ action_result.summary.threat_profile_phishing | numeric |  |
 action_result.summary.threat_profile_spam | numeric |  |  
 summary.total_objects | numeric |  |   1 
 summary.total_objects_successful | numeric |  |   1   
+
+## action: 'nod feed'
+Lists newly observed domains from feed
+
+Type: **investigate**  
+Read only: **True**
+
+#### Action Parameters
+No parameters are required for this action
+
+#### Action Output
+DATA PATH | TYPE | CONTAINS | EXAMPLE VALUES
+--------- | ---- | -------- | --------------
+action_result.data | string |  |  
+action_result.data.\*.domain | string |  `domain`  |  
+action_result.data.\*.timestamp | string |  |  
+action_result.status | string |  |   success  failed   
 
 ## action: 'pivot action'
 Find domains connected by any supported Iris Investigate search parameter
