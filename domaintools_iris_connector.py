@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import phantom.app as phantom
 import requests
 import tldextract
+
 # 3rd party imports
 from domaintools import API
 from phantom.action_result import ActionResult
@@ -32,6 +33,7 @@ class DomainToolsConnector(BaseConnector):
     ACTION_ID_LOAD_HASH = "load_hash"
     ACTION_ID_ON_POLL = "on_poll"
     ACTION_ID_CONFIGURE_SCHEDULED_PLAYBOOK = "configure_monitoring_scheduled_playbooks"
+    ACTION_ID_NOD_FEED = "nod_feed"
 
     def __init__(self):
         # Call the BaseConnectors init first
@@ -274,9 +276,11 @@ class DomainToolsConnector(BaseConnector):
         # Make the final result sorted in descending order by default
         return sorted(
             final_result,
-            key=lambda d: 0
-            if d.get("domain_risk", {}).get("risk_score_string") == ""
-            else d.get("domain_risk", {}).get("risk_score"),
+            key=lambda d: (
+                0
+                if d.get("domain_risk", {}).get("risk_score_string") == ""
+                else d.get("domain_risk", {}).get("risk_score")
+            ),
             reverse=True,
         )
 
@@ -354,6 +358,8 @@ class DomainToolsConnector(BaseConnector):
             ret_val = self._on_poll(param)
         elif action_id == self.ACTION_ID_CONFIGURE_SCHEDULED_PLAYBOOK:
             ret_val = self._configure_monitoring_scheduled_playbooks(param)
+        elif action_id == self.ACTION_ID_NOD_FEED:
+            ret_val = self._nod_feed(param)
 
         return ret_val
 
@@ -882,6 +888,33 @@ class DomainToolsConnector(BaseConnector):
             phantom.APP_ERROR,
             f"`{self._scheduled_playbooks_list_name}` custom list {res.get('message')}",
         )
+
+    def _nod_feed(self, param):
+        self.save_progress("Starting nod_feeds action.")
+        action_result = self.add_action_result(ActionResult(param))
+
+        # params = {"domains": self._domains}
+        # self._do_query("iris_investigate", action_result, query_args=params)
+        # response = requests.get()
+        response = requests.get(
+            "https://api.domaintools.com/v1/feed/nod/?api_key=c5650-ee587-40d73-8ddc2-8f001&api_username=ajohnson_nod_api&after=-60"
+        )
+        rows = response.text.strip().split("\n")
+        data = []
+        for row in rows:
+            feed_result = json.loads(row)
+            data.append(
+                {
+                    "timestamp": feed_result.get("timestamp"),
+                    "domain": feed_result.get("domain"),
+                }
+            )
+
+        action_result.update_data(data)
+        action_result.set_status(phantom.APP_SUCCESS)
+        self.save_progress("Completed nod_feed action.")
+
+        return action_result.get_status()
 
 
 if __name__ == "__main__":
