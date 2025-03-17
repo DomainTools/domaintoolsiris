@@ -7,12 +7,12 @@
     "type": "information",
     "license": "Copyright (c) 2019-2025 DomainTools, LLC",
     "main_module": "domaintools_iris_connector.py",
-    "app_version": "1.5.4",
+    "app_version": "1.5.5",
     "utctime_updated": "2025-02-06T20:44:07.000000Z",
     "product_vendor": "DomainTools",
     "product_name": "DomainTools Iris Investigate",
     "product_version_regex": ".*",
-    "min_phantom_version": "6.3.0",
+    "min_phantom_version": "6.3.1",
     "python_version": "3",
     "logo": "logo_domaintools_iris.svg",
     "logo_dark": "logo_domaintools_iris_dark.svg",
@@ -2123,17 +2123,17 @@
                 "after": {
                     "description": "The start of the query window in seconds in ISO8601 format, relative to the current time, inclusive.",
                     "data_type": "string",
-                    "order": 1
+                    "order": 2
                 },
                 "session_id": {
                     "description": "Serves as a unique identifier for the session. This parameter ensures that data retrieval begins from the latest timestamp recorded in the previous data pull.",
                     "data_type": "string",
-                    "order": 2
+                    "order": 3
                 },
                 "top": {
                     "description": "The number of results to return in the response payload. Primarily used for testing.",
                     "data_type": "string",
-                    "order": 3
+                    "order": 4
                 }
             },
             "render": {
@@ -2180,6 +2180,10 @@
                 },
                 {
                     "data_path": "action_result.parameter.after",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.before",
                     "data_type": "string"
                 },
                 {
@@ -2231,17 +2235,17 @@
                 "after": {
                     "description": "The start of the query window in seconds in ISO8601 format, relative to the current time, inclusive.",
                     "data_type": "string",
-                    "order": 1
+                    "order": 2
                 },
                 "session_id": {
                     "description": "Serves as a unique identifier for the session. This parameter ensures that data retrieval begins from the latest timestamp recorded in the previous data pull.",
                     "data_type": "string",
-                    "order": 2
+                    "order": 3
                 },
                 "top": {
                     "description": "The number of results to return in the response payload. Primarily used for testing.",
                     "data_type": "string",
-                    "order": 3
+                    "order": 4
                 }
             },
             "render": {
@@ -2288,6 +2292,10 @@
                 },
                 {
                     "data_path": "action_result.parameter.after",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.parameter.before",
                     "data_type": "string"
                 },
                 {
