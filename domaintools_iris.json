@@ -2115,8 +2115,13 @@
                     "data_type": "string",
                     "order": 0
                 },
+                "before": {
+                    "description": "The end of the query window in seconds or in ISO8601 format, relative to the current time, inclusive.",
+                    "data_type": "string",
+                    "order": 1
+                },
                 "after": {
-                    "description": "A negative integer (in seconds) representing the start of the time window, relative to the current time in seconds, for which data will be provided.",
+                    "description": "The start of the query window in seconds in ISO8601 format, relative to the current time, inclusive.",
                     "data_type": "string",
                     "order": 1
                 },
@@ -2218,8 +2223,13 @@
                     "data_type": "string",
                     "order": 0
                 },
+                "before": {
+                    "description": "The end of the query window in seconds or in ISO8601 format, relative to the current time, inclusive.",
+                    "data_type": "string",
+                    "order": 1
+                },
                 "after": {
-                    "description": "A negative integer (in seconds) representing the start of the time window, relative to the current time in seconds, for which data will be provided.",
+                    "description": "The start of the query window in seconds in ISO8601 format, relative to the current time, inclusive.",
                     "data_type": "string",
                     "order": 1
                 },
